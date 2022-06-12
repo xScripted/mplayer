@@ -1,0 +1,7 @@
+{
+  "name": "mplayer",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue"
+}
