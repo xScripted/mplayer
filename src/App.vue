@@ -7,7 +7,7 @@ import { useRoute } from 'vue-router'
 
 import mitt from 'mitt'
 import Storage from '@/api/storage'
-import useMusic from '@/services/useMusic'
+import usePlayer from '@/services/usePlayer'
 import MTabs from '@/components/MTabs.vue'
 import MPlayerLite from '@/components/MPlayerLite.vue'
 import MHeader from '@/components/MHeader.vue'
@@ -24,7 +24,7 @@ export default defineComponent({
   setup() {
     const emitter = mitt()
     const route = useRoute()
-    const { player } = useMusic()
+    const { player } = usePlayer()
 
     // Providers
     provide('emitter', emitter)
@@ -45,7 +45,7 @@ export default defineComponent({
         AndroidPermissions.PERMISSION.READ_EXTERNAL_STORAGE,
       ])
 
-      const songs = await Storage.getSongs()
+      const songs = await Storage.getMetaSongs()
       const settings = Storage.getSettings()
       const tags = Storage.getTags()
 
@@ -96,6 +96,33 @@ body {
 
   * {
     font-family: 'Rubik';
+  }
+}
+
+.tag {
+  transition: 0.3s ease;
+  border-radius: 6px;
+  width: 100%;
+  min-height: 40px;
+  padding: 5px;
+  font-size: 15px;
+  box-shadow: 0 0 5px 0 black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &.active {
+    transition: 0.3s ease;
+    border: 2px solid black;
+    transform: skewY(-6deg) scale(0.9);
+  }
+  &.unactive {
+    transition: 0.3s ease;
+    opacity: 0.5;
+    transform: scale(0.7);
   }
 }
 

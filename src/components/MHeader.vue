@@ -79,11 +79,16 @@ export default defineComponent({
 </script>
 
 <template>
-  <div id="MHeader" :class="{ fullHeight: fullHeight && isPlaylist }">
+  <div
+    id="MHeader"
+    :class="{
+      fullHeight: fullHeight && isPlaylist,
+      builder: mplayer.modeBuilder,
+    }"
+  >
     <div class="header">
       <router-link :to="{ name: 'Playlist' }">
-        <div class="logo">
-          <span class="icon">🎵</span>
+        <div class="logo" :class="{ builder: mplayer.modeBuilder }">
           <h1>MPlayer</h1>
         </div>
       </router-link>
@@ -156,6 +161,14 @@ export default defineComponent({
     height: max-content;
   }
 
+  &.builder {
+    background-image: -webkit-linear-gradient(
+      214deg,
+      rgb(25, 0, 255),
+      rgba(255, 0, 206, 1)
+    );
+  }
+
   .header {
     display: flex;
     justify-content: space-between;
@@ -213,14 +226,16 @@ export default defineComponent({
 
   .logo {
     display: flex;
+    color: rgb(255, 255, 255);
 
     h1 {
       margin: 0 5px;
-      font-size: 18px;
-      font-weight: bold;
+      font-size: 20px;
       font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS',
         sans-serif;
+    }
 
+    &:not(.builder) {
       background-image: -webkit-linear-gradient(
         170deg,
         rgb(96, 78, 255),

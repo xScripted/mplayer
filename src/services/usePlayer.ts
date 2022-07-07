@@ -3,25 +3,22 @@ import Storage from '@/api/storage'
 import ISong from '@/models/ISong'
 import { useMPlayerStore } from '@/store'
 
-const useMusic = () => {
+const usePlayer = () => {
   const mplayer = useMPlayerStore()
   const lastSongs: ISong[] = []
   let index = 0
-  let _pool = []
 
   const player = {
-    async buildSong(i: number, mixMode = false) {
+    async buildSong(i: number) {
       index = i
-      // Clear old songs
-      Howler._howls.map((howl: any, index: number) => index > 1 ? howl.unload() : null)
-      if(!mixMode && Howler._howls.length > 0) Howler._howls[0].fade(1, 0, mplayer.settings.mixMode * 1000)
-     
+      // fade out last song
+      letDieSong()
       // Reset selected song
       mplayer.songs.map((song: ISong) => song.selected = false)
 
       // Set currentSong data
-      mplayer.currentSong = mplayer.songs[i]
-      const songId = mplayer.songs[i].id
+      mplayer.currentSong = mplayer.songsFilter[i]
+      const songId = mplayer.songsFilter[i].id
       const URL = (await Storage.getSongFile(songId)).path
 
       Howler._howls[0] = new Howl({
@@ -30,39 +27,32 @@ const useMusic = () => {
         volume: 1,
         html5: false,
         onplay() {
-          Howler._howls[0].fade(0, 1, mplayer.settings.mixMode * 1000)
-
+          player.updateRate()
+          
           if(mplayer.isDJMode) {
             const newBeginning = mplayer.settings.songStarts * Howler._howls[0].duration() / 100
             Howler._howls[0].seek(newBeginning)
           }
-
-          player.updateRate()
+          
+          Howler._howls[0].fade(0, 1, mplayer.settings.mixMode * 1000)
 
           const stepFunction = () => {
             // Refactor error
-            const nextWidth = Howler._howls[0].seek() / Howler._howls[0].duration() * 100
+            const nextWidth = Howler._howls[0]?.seek() / Howler._howls[0]?.duration() * 100
 
             mplayer.dynamicWidth = nextWidth + '%'
             if(mplayer.playing) window.requestAnimationFrame(() => stepFunction())
           }
 
           window.requestAnimationFrame( () => stepFunction());
-          console.log("Playing!");
         },
-        onload() {
-          console.log("Loaded!");
-        },
-        onend() {
-          //player.next()
-        },  
         onloaderror(id: any, err: any) {
           console.error('Load Error', id, err, URL);
         },
         onplayerror(id: any, err: any) {
           console.error('Play Error', id, err, URL);
         },
-      });
+      })
 
       player.play()
     },
@@ -87,9 +77,9 @@ const useMusic = () => {
       Howler._howls[0].pause()
       mplayer.playing = false
     },
-    next(mixMode = false) {
+    next() {
       if(mplayer.isBucle) {
-        player.buildSong(index, mixMode)
+        player.buildSong(index)
         return
       }
 
@@ -97,7 +87,7 @@ const useMusic = () => {
         const i = mplayer.isShuffle ? Math.round(Math.random() * (mplayer.queue.length - 1)) : 0
         const queueSongId = mplayer.queue[i].id
         index = mplayer.songs.findIndex((song: ISong) => song.id === queueSongId) // Find index of next song
-        player.buildSong(index, mixMode)
+        player.buildSong(index)
         mplayer.removeFromQueue(mplayer.queue[i].id) // Remove song from the queue
         lastSongs.push(mplayer.currentSong) // refactor last songs
         return
@@ -105,17 +95,17 @@ const useMusic = () => {
       //Posible refactor
       if(mplayer.isShuffle) {
         index = historicalRandom()
-        player.buildSong(index, mixMode)
+        player.buildSong(index)
         lastSongs.push(mplayer.currentSong)
         return
       }
 
       const currentIndex = mplayer.songs.findIndex((song: ISong) => song.selected)
       if(currentIndex < mplayer.songs.length - 1) {
-        player.buildSong(currentIndex + 1, mixMode)
+        player.buildSong(currentIndex + 1)
         lastSongs.push(mplayer.currentSong)
       } else {
-        player.buildSong(0, mixMode)
+        player.buildSong(0)
         lastSongs.push(mplayer.currentSong)
       }
     },
@@ -137,8 +127,19 @@ const useMusic = () => {
     return index
   }
 
+  const letDieSong = () => {
+    const sound = Howler._howls[0]
+    const delay = mplayer.settings.mixMode * 1000
+
+    if(sound) {
+      Howler._howls = []
+      sound.fade(1, 0, delay)
+      setTimeout(() => sound.unload(), delay)
+    }
+  }
+
   setInterval(() => {
-    if(Howler._howls.length > 0 && Howler._howls[0].playing()) {
+    if(Howler._howls[0]?.playing()) {
       const duration = Howler._howls[0].duration()
       const newEnding = duration - (duration * mplayer.settings.songEnds / 100)
       const margin = mplayer.isDJMode ? newEnding : mplayer.settings.mixMode
@@ -146,7 +147,7 @@ const useMusic = () => {
       const deadLine = duration - margin
       const currentSecond = Howler._howls[0].seek()
       
-      if(currentSecond > deadLine) player.next(true)
+      if(currentSecond > deadLine) player.next()
     }
   }, 1000)
 
@@ -155,4 +156,4 @@ const useMusic = () => {
   }
 }
 
-export default useMusic
+export default usePlayer

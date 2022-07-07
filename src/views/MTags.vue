@@ -3,7 +3,17 @@ import { defineComponent } from 'vue'
 import { useMPlayerStore } from '@/store'
 import useTags from '../services/useTags'
 import { IonButton, IonToggle, IonIcon } from '@ionic/vue'
-import { expand, contract, add, pricetags, close } from 'ionicons/icons'
+import {
+  expand,
+  contract,
+  add,
+  pricetags,
+  close,
+  trash,
+  brushOutline,
+  brush,
+  refresh,
+} from 'ionicons/icons'
 
 export default defineComponent({
   components: {
@@ -13,16 +23,32 @@ export default defineComponent({
   },
   setup() {
     const mplayer = useMPlayerStore()
-    const { formData, gradient, btnForm, createTag, isForm } = useTags()
+    const {
+      formData,
+      gradient,
+      createTag,
+      isForm,
+      startClick,
+      endClick,
+      updateTag,
+      editTagId,
+      clearForm,
+      deleteTag,
+    } = useTags()
 
     return {
       songs: mplayer.songs,
       formData,
       gradient,
-      btnForm,
       createTag,
       isForm,
       mplayer,
+      startClick,
+      endClick,
+      updateTag,
+      editTagId,
+      clearForm,
+      deleteTag,
 
       // icons
       contract,
@@ -30,6 +56,10 @@ export default defineComponent({
       add,
       pricetags,
       close,
+      trash,
+      brushOutline,
+      brush,
+      refresh,
     }
   },
 })
@@ -40,15 +70,55 @@ export default defineComponent({
     <div class="tags-tools">
       <div class="tag-mode">
         <ion-icon :icon="contract" />
-        <ion-toggle />
+        <ion-toggle
+          :checked="mplayer.tagAndOr"
+          value="false"
+          @ionChange="
+            () => {
+              mplayer.tagAndOr = !mplayer.tagAndOr
+              mplayer.filterSongs()
+            }
+          "
+        />
         <ion-icon :icon="expand" />
       </div>
-      <div class="open-form">
-        <div v-if="!isForm" class="open-btn" @click="isForm = true">
-          <ion-icon :icon="pricetags" />
-          <ion-icon :icon="add" />
+      <div class="group-right">
+        <div
+          v-if="!isForm"
+          class="edit-song-tags"
+          @click="
+            () => {
+              mplayer.modeBuilder = !mplayer.modeBuilder
+              mplayer.filterSongs()
+            }
+          "
+        >
+          <ion-icon v-if="mplayer.modeBuilder" :icon="brush" />
+          <ion-icon v-else :icon="brushOutline" />
         </div>
-        <ion-icon v-else @click="isForm = false" :icon="close" />
+
+        <ion-icon
+          v-if="!isForm"
+          @click="mplayer.clearStatus()"
+          style="font-size: 20px"
+          :icon="refresh"
+        />
+        <div class="open-form">
+          <div v-if="!isForm" class="open-btn" @click="isForm = true">
+            <ion-icon :icon="add" />
+            <ion-icon :icon="pricetags" />
+          </div>
+          <ion-icon
+            v-else
+            @click="
+              () => {
+                clearForm()
+                isForm = false
+              }
+            "
+            :icon="close"
+          />
+        </div>
       </div>
     </div>
     <div v-if="isForm" class="create-tag-form">
@@ -77,21 +147,58 @@ export default defineComponent({
         <input id="tag-grad2" v-model="formData.grad2" type="color" />
       </div>
       <ion-button
+        v-if="!editTagId"
         @click="createTag"
         style="grid-column: 1 / 3; height: 50px; margin-top: 50px"
       >
-        {{ btnForm }}
+        Create
       </ion-button>
+      <div v-else class="update-buttons">
+        <ion-button @click="updateTag"> Update </ion-button>
+        <ion-button @click="deleteTag" color="danger"> Delete </ion-button>
+      </div>
     </div>
     <div class="tags-container" v-else>
       <div
-        class="tag"
-        :style="{ background: tag.bgColor, color: tag.textColor }"
         v-for="tag of mplayer.tags"
+        class="tag"
+        :class="tag.status"
+        :style="{ background: tag.bgColor, color: tag.textColor }"
         :key="tag.id"
+        @mousedown="startClick()"
+        @mouseup="endClick(tag)"
       >
         {{ tag.name }}
       </div>
+    </div>
+    <div v-if="mplayer.tags.length === 0 && !isForm" class="tags-info">
+      Tags are used to add attributes to your songs (e.g: Rock, EDM, Remix,
+      Chill, Favourites...).<br /><br />
+      This is useful to filter the playlist and make custom playlist combining
+      the tags that you want to hear
+      <br />
+      <br />
+      <ion-icon :icon="contract" /> Filter songs that have BOTH tags
+      <br />
+      <br />
+      <ion-icon :icon="expand" /> Filter songs that have atleast one tag
+      <br />
+      <br />
+      <ion-icon :icon="brushOutline" /> Activate mode editor, allows you to add
+      or remove current tags selected to songs by clicking the song on the
+      playlist tab. (1st click: add, 2nd click: remove)
+      <br />
+      <br />
+      <ion-icon :icon="pricetags" /> Form to create a new tag
+      <br />
+      <br />
+      <ion-icon :icon="trash" /> Unselect all the tags
+      <br />
+      <br />
+      To edit an existing tag hold click one second and form will display
+      <br />
+      <br />
+      There are three states for tags: normal, activated & negative
     </div>
   </div>
 </template>
@@ -112,18 +219,38 @@ export default defineComponent({
       align-items: center;
     }
 
-    .open-form {
-      font-size: 20px;
+    .group-right {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
 
       ion-icon {
-        padding: 5px;
+        padding: 10px;
+        padding-left: 20px;
+        font-size: 20px;
+      }
+    }
+
+    .open-form {
+      margin-top: 5px;
+      font-size: 20px;
+
+      .open-btn {
+        ion-icon:nth-child(1) {
+          position: absolute;
+          color: black;
+          font-size: 14px;
+          z-index: 2;
+          margin-top: 2px;
+          margin-left: 2px;
+        }
       }
     }
   }
 
   .create-tag-form {
     display: grid;
-    grid-gap: 20px;
+    grid-gap: 10px;
     grid-template-columns: 1fr 1fr;
 
     .input-group {
@@ -147,18 +274,29 @@ export default defineComponent({
 
       input[type='color'] {
         width: 100%;
-        height: 50px;
+        height: 40px;
       }
     }
-  }
 
-  .preview {
-    display: flex;
-    justify-content: center;
-    margin: 30px 0;
+    .update-buttons {
+      grid-column: 1 / 3;
+      display: flex;
+      flex-direction: column;
 
-    .tag {
-      width: 150px;
+      ion-button {
+        height: 50px;
+        margin-top: 20px;
+      }
+    }
+
+    .preview {
+      display: flex;
+      justify-content: center;
+      margin: 20px 0;
+
+      .tag {
+        width: 150px;
+      }
     }
   }
 
@@ -168,28 +306,9 @@ export default defineComponent({
     grid-template-columns: 1fr 1fr 1fr;
     grid-gap: 15px;
   }
-  .tag {
-    border-radius: 6px;
-    width: 100%;
-    min-height: 40px;
-    padding: 5px;
-    font-size: 15px;
-    box-shadow: 0 0 5px 0 black;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 
-    &.active {
-      border: 2px solid black;
-      transform: skewY(-6deg) scale(0.9);
-    }
-    &.unactive {
-      opacity: 0.5;
-      transform: scale(0.7);
-    }
+  .tags-info {
+    color: grey;
   }
 }
 </style>

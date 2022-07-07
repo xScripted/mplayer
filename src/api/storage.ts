@@ -12,14 +12,12 @@ export default {
         const db = open.result;
     
         db.createObjectStore('songs_file', { keyPath: 'id' })
-        db.createObjectStore('songs_meta', { keyPath: 'id' }) 
       }
 
       open.onsuccess = () => {
         const db = open.result
-
+        const LocalStorageMetaSongs: ISong[] = []
         const OSSongsFile = db.transaction('songs_file', 'readwrite').objectStore('songs_file')
-        const OSSongsMeta = db.transaction('songs_meta', 'readwrite').objectStore('songs_meta')
 
         songs.map((song: ISong) => {
           OSSongsFile.add({
@@ -27,15 +25,18 @@ export default {
             path: song.path,
           })
 
-          OSSongsMeta.add({
+          LocalStorageMetaSongs.push({
             id: song.id,
             title: song.title,
             artist: song.artist,
             selected: false,
+            cover: '',
             tags: [],
             date: song.date
-          })
+          })          
         })
+
+        window.localStorage.setItem('mplayer_songs_meta', JSON.stringify(LocalStorageMetaSongs))
       }
 
       open.onerror = (error) => console.log('IDB err', error)
@@ -43,54 +44,28 @@ export default {
       console.error('Indexed DB not available :(')
     }
   },
-  getSongFile:  async (songId: string): Promise<any> => {
+  getSongFile: async (songId: string): Promise<any> => {
     if(window.indexedDB) {
       const open = window.indexedDB.open('myplayer_db', 1)
 
       return new Promise(resolve => {
-        open.onsuccess = async () => {
-          
+        open.onsuccess = async () => {          
           const db = open.result
-          const OSSongsMeta = db.transaction('songs_file').objectStore('songs_file')
-          const query = await OSSongsMeta.get(songId)
+          const OSSongsFile = db.transaction('songs_file').objectStore('songs_file')
+          const query = await OSSongsFile.get(songId)
           
-          query.onsuccess = () => {
-            console.log('query', query.result)
-            resolve(query.result)
-          }
-          
-          query.onerror = (err) => console.error('65 - ', err) 
+          query.onsuccess = () => resolve(query.result)
+          query.onerror = (err) => console.error('GetSongFile - ', err) 
         }
       })
     }
   },
-  getSongs: async (): Promise<any> => {
-    if(window.indexedDB) {
-      const open = window.indexedDB.open('myplayer_db', 1)
-
-      open.onupgradeneeded = () => {
-        const db = open.result;
-    
-        db.createObjectStore('songs_file', { keyPath: 'id' })
-        db.createObjectStore('songs_meta', { keyPath: 'id' }) 
-        console.log('onupgradeneeded!')
-      }
-
-      return new Promise(resolve => {
-        open.onsuccess = async () => {
-          const db = open.result
-          const OSSongsMeta = db.transaction('songs_meta').objectStore('songs_meta')
-          const query = await OSSongsMeta.getAll()
-          query.onsuccess = () => {
-            resolve(query.result)
-          }
-          
-          query.onerror = (err) => console.error('65 - ', err) 
-        }
-      })
-    }
-
-    return []
+  setMetaSongs: (songs: ISong[]) => {
+    window.localStorage.setItem('mplayer_songs_meta', JSON.stringify(songs))
+  },
+  getMetaSongs: (): ISong[] => {
+    const songsMeta = window.localStorage.getItem('mplayer_songs_meta')
+    return JSON.parse(songsMeta || '[]')
   },
   saveSettings: (settings: ISettings) => {
     window.localStorage.setItem('mplayer_settings', JSON.stringify(settings))
@@ -100,6 +75,10 @@ export default {
     return settings ? JSON.parse(settings) : false
   },
   setTags: (tags: ITag[]) => {
+    tags = tags.map((tag: ITag) => {
+      tag.status = ''
+      return tag
+    })
     window.localStorage.setItem('mplayer_tags', JSON.stringify(tags))
   },
   getTags(): ITag[] {

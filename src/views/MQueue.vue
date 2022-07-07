@@ -52,12 +52,28 @@ export default defineComponent({
         </div>
       </template>
     </draggable>
+    <div class="message" v-if="mplayer.queue.length === 0">
+      Press a song during one second to add it to the queue!<br /><br />
+
+      Cool features: <br />
+      <ul>
+        <li>Reorder list (Hold and move)</li>
+        <li>If shuffle is activated,It will shuffle inside the queue list</li>
+        <li>Remove songs from the queue</li>
+        <li>Songs are playable on tab(click)</li>
+      </ul>
+    </div>
   </ion-content>
 </template>
 
 <style lang="scss" scoped>
 ion-content {
   --ion-background-color: rgb(12, 12, 12);
+}
+
+.message {
+  color: gray;
+  padding: 20px;
 }
 
 .song-container {

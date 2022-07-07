@@ -7,6 +7,6 @@ export default interface ISong {
   path?: string,
   selected: boolean,
   cover: string,
-  tags: ITag[],
+  tags: string[],
   date: Date
 }

@@ -3,6 +3,7 @@ import { useMPlayerStore } from '@/store'
 import { IonContent, IonList, IonItem } from '@ionic/vue'
 import { defineComponent, inject } from 'vue'
 import ISong from '@/models/ISong'
+import ITag from '@/models/ITag'
 
 export default defineComponent({
   components: {
@@ -21,18 +22,28 @@ export default defineComponent({
       const endTime: any = new Date()
       const timeDiff = endTime - startTime // ms
 
-      if (timeDiff < 300) emitter.emit('buildSong', index)
-      else {
+      if (timeDiff < 300) {
+        if (mplayer.modeBuilder) {
+          mplayer.applyTagsToSong(song.id)
+          emitter.emit('show-alert', `📚 Tags applied to: ${song.title}`)
+        } else {
+          emitter.emit('buildSong', index)
+        }
+      } else {
         mplayer.addSongToQueue(song)
         emitter.emit('show-alert', `📣 ${song.title} - added to queue!`)
       }
     }
+
+    const findTag = (tagId: string) =>
+      mplayer.tags.find((tag: ITag) => tag.id === tagId)
 
     return {
       mplayer,
       emitter,
       startClick,
       endClick,
+      findTag,
     }
   },
 })
@@ -48,8 +59,18 @@ export default defineComponent({
         @mouseup="endClick(song, index)"
       >
         <div class="song" :class="{ selected: song.selected }">
-          <div class="title">{{ song.title }}</div>
-          <div class="artist">{{ song.artist }}</div>
+          <div>
+            <div class="title">{{ song.title }}</div>
+            <div class="artist">{{ song.artist }}</div>
+          </div>
+          <div class="song-tag-balls">
+            <div
+              v-for="tagId in song.tags"
+              :key="tagId"
+              class="tag-ball"
+              :style="{ background: findTag(tagId)?.bgColor }"
+            />
+          </div>
         </div>
       </ion-item>
     </ion-list>
@@ -61,6 +82,9 @@ ion-content {
   --ion-background-color: rgb(12, 12, 12);
 }
 .song {
+  display: grid;
+  grid-template-columns: 5fr 3fr;
+
   margin-bottom: 5px;
   width: 100%;
 
@@ -86,6 +110,16 @@ ion-content {
     padding: 5px;
     padding-top: 0px;
     text-align: left;
+  }
+
+  .song-tag-balls {
+    .tag-ball {
+      float: right;
+      width: 12px;
+      height: 12px;
+      margin: 2px;
+      border-radius: 100%;
+    }
   }
 }
 </style>
