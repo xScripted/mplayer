@@ -3,13 +3,11 @@ import { defineComponent, ref, nextTick, watch } from 'vue'
 import { useMPlayerStore } from '@/store'
 import { IonContent, IonIcon } from '@ionic/vue'
 import { close } from 'ionicons/icons'
-import Draggable from 'vue3-draggable'
 
 export default defineComponent({
   components: {
     IonContent,
     IonIcon,
-    Draggable,
   },
   setup() {
     const mplayer = useMPlayerStore()
@@ -39,19 +37,16 @@ export default defineComponent({
 
 <template>
   <ion-content>
-    <draggable v-if="renderList" v-model="mplayer.queue" transition="100">
-      <template v-slot:item="{ item }">
-        <div class="song-container">
-          <div class="song" :class="{ selected: item.selected }">
-            <div class="title">{{ item.title }}</div>
-            <div class="artist">{{ item.artist }}</div>
-          </div>
-          <div class="remove">
-            <ion-icon @click="removeSong(item.id)" :icon="close" />
-          </div>
-        </div>
-      </template>
-    </draggable>
+    <div class="song-container" v-for="song in mplayer.queue" :key="song.id">
+      <div class="song" :class="{ selected: song.selected }">
+        <div class="title">{{ song.title }}</div>
+        <div class="artist">{{ song.artist }}</div>
+      </div>
+      <div class="remove">
+        <ion-icon @click="removeSong(song.id)" :icon="close" />
+      </div>
+    </div>
+
     <div class="message" v-if="mplayer.queue.length === 0">
       Press a song during one second to add it to the queue!<br /><br />
 
@@ -68,7 +63,7 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 ion-content {
-  --ion-background-color: rgb(12, 12, 12);
+  --ion-background-color: rgb(24, 0, 51);
 }
 
 .message {

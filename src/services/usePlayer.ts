@@ -1,12 +1,13 @@
-import { Howler, Howl } from 'howler'
-import Storage from '@/api/storage'
 import ISong from '@/models/ISong'
 import { useMPlayerStore } from '@/store'
+import { Howler, Howl } from 'howler'
+import { Capacitor } from '@capacitor/core'
 
-const usePlayer = () => {
+const usePlayer = (emitter: any) => {
   const mplayer = useMPlayerStore()
   const lastSongs: ISong[] = []
   let index = 0
+
 
   const player = {
     async buildSong(i: number) {
@@ -18,8 +19,8 @@ const usePlayer = () => {
 
       // Set currentSong data
       mplayer.currentSong = mplayer.songsFilter[i]
-      const songId = mplayer.songsFilter[i].id
-      const URL = (await Storage.getSongFile(songId)).path
+      //const songId = mplayer.currentSong.id
+      const URL = Capacitor.convertFileSrc(mplayer.settings.folderPath + mplayer.currentSong.path) // mplayer.currentSong.path
 
       Howler._howls[0] = new Howl({
         src: [URL],
@@ -27,6 +28,9 @@ const usePlayer = () => {
         volume: 1,
         html5: false,
         onplay() {
+          mplayer.playing = true
+          mplayer.songsFilter[index].selected = true
+
           player.updateRate()
           
           if(mplayer.isDJMode) {
@@ -35,22 +39,14 @@ const usePlayer = () => {
           }
           
           Howler._howls[0].fade(0, 1, mplayer.settings.mixMode * 1000)
-
-          const stepFunction = () => {
-            // Refactor error
-            const nextWidth = Howler._howls[0]?.seek() / Howler._howls[0]?.duration() * 100
-
-            mplayer.dynamicWidth = nextWidth + '%'
-            if(mplayer.playing) window.requestAnimationFrame(() => stepFunction())
-          }
-
-          window.requestAnimationFrame( () => stepFunction());
         },
         onloaderror(id: any, err: any) {
-          console.error('Load Error', id, err, URL);
+          emitter.emit('show-alert',`❌ ${err} <br> ${URL}`)
+          console.error('Load Error', id, err, URL)
         },
         onplayerror(id: any, err: any) {
-          console.error('Play Error', id, err, URL);
+          emitter.emit('show-alert',`❌ ${err} <br> ${URL}`)
+          console.error('Play Error', id, err, URL)
         },
       })
 
@@ -70,19 +66,18 @@ const usePlayer = () => {
     play() {
       player.updateRate()
       Howler._howls[0].play()
-      mplayer.playing = true
-      mplayer.songs[index].selected = true
     },
     pause() {
       Howler._howls[0].pause()
       mplayer.playing = false
     },
     next() {
+      // First priority: Loop active
       if(mplayer.isBucle) {
         player.buildSong(index)
         return
       }
-
+      // Second priority: Queue 
       if(mplayer.queue.length > 0) {
         const i = mplayer.isShuffle ? Math.round(Math.random() * (mplayer.queue.length - 1)) : 0
         const queueSongId = mplayer.queue[i].id
@@ -92,16 +87,17 @@ const usePlayer = () => {
         lastSongs.push(mplayer.currentSong) // refactor last songs
         return
       }
-      //Posible refactor
+      // Third priority: Random active
       if(mplayer.isShuffle) {
         index = historicalRandom()
         player.buildSong(index)
         lastSongs.push(mplayer.currentSong)
         return
       }
-
-      const currentIndex = mplayer.songs.findIndex((song: ISong) => song.selected)
-      if(currentIndex < mplayer.songs.length - 1) {
+      // Last priority: Find next song available
+      const currentIndex = mplayer.songsFilter.findIndex((song: ISong) => song.selected)
+      console.log(currentIndex, mplayer.songsFilter.length)
+      if(currentIndex < mplayer.songsFilter.length - 1) {
         player.buildSong(currentIndex + 1)
         lastSongs.push(mplayer.currentSong)
       } else {
@@ -150,6 +146,14 @@ const usePlayer = () => {
       if(currentSecond > deadLine) player.next()
     }
   }, 1000)
+
+  const stepFunction = () => {
+    const nextWidth = Howler._howls[0]?.seek() / Howler._howls[0]?.duration() * 100
+    mplayer.dynamicWidth = nextWidth + '%'
+    window.requestAnimationFrame(() => stepFunction())
+  }
+
+  window.requestAnimationFrame(() => stepFunction())
 
   return {
     player

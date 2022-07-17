@@ -5,8 +5,10 @@ import { defineComponent, inject } from 'vue'
 import { useMPlayerStore } from '@/store'
 import { v4 as uuid } from 'uuid'
 import { FilePicker } from '@robingenz/capacitor-file-picker'
-import ISong from '@/models/ISong'
+import ISong, { isSong } from '@/models/ISong'
+import ITag, { isTag } from '@/models/ITag'
 import Storage from '@/api/storage'
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 
 export default defineComponent({
   components: {
@@ -18,36 +20,106 @@ export default defineComponent({
     const mplayer = useMPlayerStore()
     const emitter: any = inject('emitter')
 
+    // utils
+    const onlyNewSongs = (newISongs: ISong[]) => {
+      return newISongs.filter((song: ISong) =>
+        mplayer.songs.every(
+          (mpSong: ISong) =>
+            mpSong.title !== song.title || mpSong.artist !== song.artist
+        )
+      )
+    }
+
+    const onlyNewTags = (newITags: ITag[]) => {
+      return newITags.filter((tag: ITag) =>
+        mplayer.tags.every((mpTag: ITag) => mpTag.name !== tag.name)
+      )
+    }
+
     const addSongs = async () => {
       try {
         const result = await FilePicker.pickFiles({
           types: ['audio/*'],
           multiple: true,
-          readData: true,
+          readData: false,
         })
 
         let songs: ISong[] = []
 
         result.files.map((file) => {
-          const names = file.name.split('.mp3')[0].split('-')
+          let names = file.name.split('.mp3')[0].split('-')
+          if (names.length === 1) names = ['', file.name.split('.mp3')[0]]
+
           songs.push({
             id: 'song-' + uuid(),
-            title: names[1].trim(),
-            artist: names[0].trim(),
-            path: 'data:audio/x-mp3;base64,' + file.data,
+            title: names[1]?.trim(),
+            artist: names[0]?.trim(),
+            path: file.name,
             selected: false,
             tags: [],
-            cover:
-              'https://cdn.dribbble.com/users/3547568/screenshots/14395014/media/0b94c75b97182946d495f34c16eab987.jpg?compress=1&resize=400x300&vertical=top',
+            cover: '',
             date: new Date(),
           })
         })
 
+        songs = onlyNewSongs(songs)
+
         mplayer.storeSongs(songs)
-        await Storage.setSongs(songs)
+        await Storage.setMetaSongs(mplayer.songs)
       } catch (err) {
         console.error('Error: ' + err)
       }
+    }
+
+    const uploadSongs = async () => {
+      const result: any = await FilePicker.pickFiles({
+        multiple: false,
+        types: ['application/json'],
+      })
+
+      let data: ISong[] = JSON.parse(atob(result.files[0].data))
+      if (data.every((el) => isSong(el))) {
+        // Clear repeated songs
+        data = onlyNewSongs(data)
+        // Store new songs
+        mplayer.storeSongs(data)
+        await Storage.setMetaSongs(mplayer.songs)
+        // Send feedback
+        emitter.emit('show-alert', `🎉 ${data.length} songs imported!`)
+      } else {
+        emitter.emit('show-alert', `⛔ This json is not ISong[]`)
+      }
+    }
+
+    const uploadTags = async () => {
+      const result: any = await FilePicker.pickFiles({
+        multiple: false,
+        types: ['application/json'],
+      })
+
+      let data: ITag[] = JSON.parse(atob(result.files[0].data))
+      if (data.every((el) => isTag(el))) {
+        // Clear repeated songs
+        data = onlyNewTags(data)
+        // Store new songs
+        mplayer.storeTags(data)
+        await Storage.setTags(mplayer.tags)
+        // Send feedback
+        emitter.emit('show-alert', `🎉 ${data.length} tags imported!`)
+      } else {
+        emitter.emit('show-alert', `⛔ This json is not ITag[]`)
+      }
+    }
+
+    const writeSecretFile = async (data: any, name: string) => {
+      console.log(JSON.stringify(data))
+      await Filesystem.writeFile({
+        path: name + '.json',
+        data: JSON.stringify(data),
+        directory: Directory.Documents,
+        encoding: Encoding.UTF8,
+      })
+      emitter.emit('show-alert', `Saved on Documents: <br>${name}.json`)
     }
 
     return {
@@ -56,6 +128,9 @@ export default defineComponent({
       mplayer,
       emitter,
       Storage,
+      writeSecretFile,
+      uploadSongs,
+      uploadTags,
     }
   },
 })
@@ -68,6 +143,15 @@ export default defineComponent({
         <ion-icon :icon="add" />
         <span> Add songs </span>
       </ion-button>
+
+      <input
+        v-model="mplayer.settings.folderPath"
+        @input="Storage.saveSettings(mplayer.settings)"
+        class="folder-path"
+        type="text"
+        placeholder="📂 Folder path"
+      />
+
       <div class="cores">
         <h3>Nightcore {{ mplayer.settings.nightcore }}%</h3>
         <input
@@ -137,16 +221,46 @@ export default defineComponent({
           seconds
         </div>
       </div>
+
+      <div class="exports-imports">
+        <ion-button
+          class="export-songs"
+          color="primary"
+          @click="
+            writeSecretFile(mplayer.songs, mplayer.songs.length + '-songs')
+          "
+        >
+          🎵 Export Songs
+        </ion-button>
+        <ion-button
+          class="export-tags"
+          color="primary"
+          @click="writeSecretFile(mplayer.tags, mplayer.tags.length + '-tags')"
+        >
+          📚 Export Tags
+        </ion-button>
+        <ion-button class="export-tags" color="primary" @click="uploadSongs">
+          🎵 Import Songs
+        </ion-button>
+        <ion-button class="export-tags" color="primary" @click="uploadTags">
+          📚 Import Tags
+        </ion-button>
+      </div>
     </div>
   </ion-content>
 </template>
 
 <style lang="scss">
+ion-content {
+  --ion-background-color: rgb(24, 0, 51);
+  * {
+    color: white;
+  }
+}
+
 #MSettings {
   padding: 20px;
-  background: black;
-  color: white;
-  height: 100%;
+  height: fit-content;
 
   h3 {
     margin-top: 20px !important;
@@ -155,7 +269,6 @@ export default defineComponent({
   input[type='number'] {
     padding: 5px;
     width: 50px;
-    color: black;
   }
 
   input[type='range'] {
@@ -164,11 +277,24 @@ export default defineComponent({
 
   .add-songs {
     width: 100%;
-    height: 70px;
+    height: 40px;
   }
 
   .cores {
     text-align: center;
+  }
+
+  .folder-path {
+    padding: 10px;
+    width: 100%;
+    margin: 5px 0;
+  }
+
+  .exports-imports {
+    margin-top: 10px;
+    display: grid;
+    grid-gap: 5px;
+    grid-template-columns: 1fr 1fr;
   }
 
   .dj-mode,

@@ -9,7 +9,6 @@ import {
   add,
   pricetags,
   close,
-  trash,
   brushOutline,
   brush,
   refresh,
@@ -56,7 +55,6 @@ export default defineComponent({
       add,
       pricetags,
       close,
-      trash,
       brushOutline,
       brush,
       refresh,
@@ -121,6 +119,7 @@ export default defineComponent({
         </div>
       </div>
     </div>
+
     <div v-if="isForm" class="create-tag-form">
       <div class="preview" style="grid-column: 1 / 3">
         <div
@@ -165,12 +164,13 @@ export default defineComponent({
         :class="tag.status"
         :style="{ background: tag.bgColor, color: tag.textColor }"
         :key="tag.id"
-        @mousedown="startClick()"
-        @mouseup="endClick(tag)"
+        @touchstart="startClick()"
+        @touchend="endClick(tag)"
       >
         {{ tag.name }}
       </div>
     </div>
+
     <div v-if="mplayer.tags.length === 0 && !isForm" class="tags-info">
       Tags are used to add attributes to your songs (e.g: Rock, EDM, Remix,
       Chill, Favourites...).<br /><br />
@@ -192,7 +192,7 @@ export default defineComponent({
       <ion-icon :icon="pricetags" /> Form to create a new tag
       <br />
       <br />
-      <ion-icon :icon="trash" /> Unselect all the tags
+      <ion-icon :icon="refresh" /> Unselect all the tags
       <br />
       <br />
       To edit an existing tag hold click one second and form will display
@@ -206,7 +206,7 @@ export default defineComponent({
 <style lang="scss" scoped>
 #MTags {
   padding: 20px;
-  background-color: rgb(26, 26, 26);
+  background-color: rgb(24, 0, 51);
   color: white;
   height: 100%;
 

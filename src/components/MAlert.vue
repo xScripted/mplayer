@@ -28,7 +28,7 @@ export default defineComponent({
 <template>
   <transition name="fade">
     <div v-if="showAlert" class="MAlert" :class="theme">
-      <span> {{ message }} </span>
+      <span v-html="message" />
     </div>
   </transition>
 </template>
@@ -38,7 +38,7 @@ export default defineComponent({
   position: absolute;
   z-index: 10;
   padding: 20px;
-  background: rgba(41, 41, 41, 0.7);
+  background: rgba(41, 41, 41, 0.8);
   color: white;
   width: 80%;
   top: 20px;
@@ -51,7 +51,7 @@ export default defineComponent({
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.5s;
+  transition: opacity 0.7s;
 }
 .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
   opacity: 0;

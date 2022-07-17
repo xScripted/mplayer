@@ -24,7 +24,7 @@ export default defineComponent({
   setup() {
     const emitter = mitt()
     const route = useRoute()
-    const { player } = usePlayer()
+    const { player } = usePlayer(emitter)
 
     // Providers
     provide('emitter', emitter)
@@ -65,9 +65,7 @@ export default defineComponent({
     <m-header />
     <div class="full" :class="{ routes: route.name !== 'Player' }">
       <router-view v-slot="{ Component }">
-        <transition name="fade">
-          <component :is="Component" />
-        </transition>
+        <component :is="Component" />
       </router-view>
     </div>
     <div :style="{ zIndex: route.name === 'Player' ? -1 : 6 }" class="controls">
@@ -96,6 +94,13 @@ body {
 
   * {
     font-family: 'Rubik';
+  }
+
+  input {
+    border: 0;
+    background-color: rgb(235, 235, 235);
+    color: black;
+    border-radius: 5px;
   }
 }
 
@@ -126,14 +131,11 @@ body {
   }
 }
 
-/* we will explain what these classes do next! */
-.v-enter-active,
-.v-leave-active {
-  transition: opacity 0.5s ease;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s;
 }
-
-.v-enter-from,
-.v-leave-to {
+.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
   opacity: 0;
 }
 </style>

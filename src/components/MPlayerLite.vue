@@ -71,6 +71,7 @@ export default defineComponent({
     rgba(255, 0, 206, 1) 100%
   );
   background-size: 200% 200%;
+  border-top: 2px solid rgb(9, 9, 9);
 
   &.animated {
     animation: rotatebg 5s ease infinite;
@@ -78,8 +79,8 @@ export default defineComponent({
 
   .info {
     width: 100%;
-    height: 70px;
-    padding: 20px;
+    height: fit-content;
+    padding: 0px 20px;
     .artist {
       font-size: 12px;
       font-weight: bold;

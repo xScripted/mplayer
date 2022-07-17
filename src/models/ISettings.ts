@@ -4,4 +4,5 @@ export default interface ISettings {
   songStarts: number, // %
   songEnds: number, // %
   mixMode: number, // seconds 
+  folderPath: string
 }

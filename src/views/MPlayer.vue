@@ -12,7 +12,7 @@ import {
   volumeOff,
   volumeHigh,
 } from 'ionicons/icons'
-import { defineComponent, inject } from 'vue'
+import { defineComponent, inject, ref } from 'vue'
 import { useMPlayerStore } from '@/store'
 import { Howler } from 'howler'
 import { IonIcon, IonContent } from '@ionic/vue'
@@ -26,6 +26,7 @@ export default defineComponent({
   setup() {
     const mplayer = useMPlayerStore()
     const emitter: any = inject('emitter')
+    const coverFlip = ref(false)
 
     const switchNightcore = () => {
       if (!mplayer.isNightcore) {
@@ -75,7 +76,7 @@ export default defineComponent({
     const selectSongMoment = (ev: any) => {
       if (Howler._howls.length > 0) {
         const songMoment =
-          ((ev.clientX / window.innerWidth) *
+          ((ev.touches[0].clientX / window.innerWidth) *
             100 *
             Howler._howls[0].duration()) /
           100
@@ -104,6 +105,7 @@ export default defineComponent({
       switchShuffle,
       selectSongMoment,
       findTag,
+      coverFlip,
     }
   },
 })
@@ -111,7 +113,7 @@ export default defineComponent({
 
 <template>
   <ion-content>
-    <div id="MPlayer">
+    <div id="MPlayer" :class="{ animated: mplayer.playing }">
       <div class="extra-bar">
         <ion-icon
           @click="switchLowcore"
@@ -133,13 +135,16 @@ export default defineComponent({
         />
       </div>
 
-      <div class="flip-card">
+      <div
+        class="flip-card"
+        :class="{ 'flip-card-hover': coverFlip }"
+        @click="coverFlip = !coverFlip"
+      >
         <div class="flip-card-inner">
-          <div class="flip-card-front">
-            <div
-              :style="{ backgroundImage: `url(${mplayer.currentSong?.cover})` }"
-            />
-          </div>
+          <div
+            class="flip-card-front"
+            :style="{ backgroundImage: `url(${mplayer.currentSong?.cover})` }"
+          />
           <div class="flip-card-back">
             <div
               v-for="tagId in mplayer.currentSong?.tags"
@@ -163,7 +168,7 @@ export default defineComponent({
         <div class="artist">{{ mplayer.currentSong?.artist }}</div>
       </div>
 
-      <div class="progress-bar-container" @click="selectSongMoment($event)">
+      <div class="progress-bar-container" @touchmove="selectSongMoment($event)">
         <div class="progress-bar">
           <div class="filled" :style="{ width: mplayer.dynamicWidth }" />
         </div>
@@ -195,11 +200,27 @@ export default defineComponent({
           :icon="reload"
         />
       </div>
+
+      <div
+        class="bg-blur-cover"
+        :style="`background-image: url(${mplayer.currentSong?.cover})`"
+      />
     </div>
   </ion-content>
 </template>
 
 <style lang="scss" scoped>
+.bg-blur-cover {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  z-index: -1;
+  opacity: 0.3;
+  filter: blur(5px);
+  background-position: center;
+  background-size: cover;
+}
+
 #MPlayer {
   position: absolute;
   top: 0;
@@ -207,7 +228,7 @@ export default defineComponent({
   z-index: 9;
   height: 100%;
   display: grid;
-  grid-template-rows: 100px 1fr 100px 50px 130px;
+  grid-template-rows: 100px 1fr 50px 40px 120px;
   background: rgb(2, 0, 36);
   background: linear-gradient(
     214deg,
@@ -215,8 +236,11 @@ export default defineComponent({
     rgba(9, 9, 121, 1) 20%,
     rgba(255, 0, 206, 1) 100%
   );
-  animation-name: fadex;
-  animation-duration: 0.3s;
+  background-size: 200% 200%;
+
+  &.animated {
+    animation: rotatebg 3s ease infinite;
+  }
 
   ion-icon {
     color: white;
@@ -236,11 +260,6 @@ export default defineComponent({
 
     ion-icon {
       padding: 15px;
-    }
-  }
-
-  .happy-box {
-    div {
     }
   }
 
@@ -274,7 +293,7 @@ export default defineComponent({
       width: 80%;
       height: 10px;
       background-color: rgba(0, 0, 0, 0.2);
-      border-radius: 6px;
+      border-radius: 4px;
       overflow: hidden;
 
       .filled {
@@ -323,12 +342,19 @@ export default defineComponent({
 }
 
 /* Do an horizontal flip when you move the mouse over the flip box container */
-.flip-card:hover .flip-card-inner {
+.flip-card-hover .flip-card-inner {
   transform: rotateY(180deg);
 }
 
 /* Position the front and back side */
-.flip-card-front,
+.flip-card-front {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  overflow: hidden;
+  box-shadow: 0 0 7px 0 rgba(0, 0, 0, 0.8);
+}
 .flip-card-back {
   position: absolute;
   width: 100%;
@@ -339,6 +365,7 @@ export default defineComponent({
   grid-template-columns: 1fr 1fr 1fr;
   grid-gap: 10px;
   padding: 10px;
+  box-shadow: 0 0 7px 0 rgba(0, 0, 0, 0.8);
 
   .tag {
     min-height: 30px;
@@ -365,12 +392,15 @@ export default defineComponent({
   border-radius: 10px;
 }
 
-@keyframes fadex {
+@keyframes rotatebg {
   0% {
-    opacity: 0;
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
   }
   100% {
-    opacity: 1;
+    background-position: 0% 50%;
   }
 }
 </style>

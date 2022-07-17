@@ -1,5 +1,4 @@
 ## To do
-
   - Historic Shuffle
-  - Google API Artists Cover
-  - Refactor API STORAGE
+  - Import / Export 
+  - Barra song second ultra bugged

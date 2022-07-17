@@ -11,6 +11,7 @@ export const useMPlayerStore = defineStore('MPlayer', {
     return { 
       songs: [] as ISong[], 
       songsFilter: [] as ISong[], 
+      songsRepre: [] as ISong[], 
       tags: [] as ITag[],
       queue: [] as ISong[],
       filterText: '',
@@ -22,15 +23,17 @@ export const useMPlayerStore = defineStore('MPlayer', {
       settings: {
         nightcore: 10,
         lowcore: 10,
-        songStarts: 0, // %
-        songEnds: 0, // %
-        mixMode: 0, // seconds 
+        songStarts: 20, // %
+        songEnds: 80, // %
+        mixMode: 5, // seconds 
+        folderPath: ''
       } as ISettings,
       isNightcore: false,
       isLowcore: false,
       isDJMode: false,
       isBucle: false,
       isShuffle: false,
+      isRepre: false,
       playing: false,
       currentSong: {} as ISong,
       dynamicWidth: '0%',
@@ -46,8 +49,20 @@ export const useMPlayerStore = defineStore('MPlayer', {
     storeTags(tags: ITag[]) {
       this.tags = this.tags.concat(tags)
     },
+    filterRepre() {
+      if(this.isRepre) {
+        // Disorder array of songs 
+        this.songsFilter = this.songs.sort(() => Math.random() - 0.5)
+        // Get only one song per artist
+        this.songsFilter.map((song: ISong) => {
+          const already = this.songsRepre.some((tmpSong: ISong) => tmpSong.artist === song.artist)
+          if(!already) this.songsRepre.push(song)
+        })
+      }
+    },
     filterSongs() {
-      this.songsFilter = this.songs.filter((song: ISong) => {
+      const arrSongs = this.isRepre ? this.songsRepre : this.songs
+      this.songsFilter = arrSongs.filter((song: ISong) => {
         let tagExists = true;
 
         if(!this.modeBuilder) {
@@ -61,29 +76,29 @@ export const useMPlayerStore = defineStore('MPlayer', {
             tagExists = activeTags.every((tag: ITag) => song.tags.includes(tag.id))
           }
         }
-          
-        const inTitle = song.title.toLowerCase().includes(this.filterText)
-        const inArtist = song.artist.toLowerCase().includes(this.filterText)
 
+        const inTitle = song.title?.toLowerCase().includes(this.filterText.toLowerCase())
+        const inArtist = song.artist?.toLowerCase().includes(this.filterText.toLowerCase())
+        
         return (inTitle || inArtist) && tagExists
       })
     },
     orderByType(type: Orders) {
       if(this.orderBy[type] != 'NONE') {
-        this.songsFilter.sort((a: ISong, b: ISong) => { //Refactor...
-            const ar1 = typeof a[type] === 'string' ? a[type].toString().toLowerCase() : a[type]
-            const ar2 = typeof b[type] === 'string' ? b[type].toString().toLowerCase() : b[type]
+        this.songsFilter.sort((a: ISong, b: ISong) => {
+          const ar1 = typeof a[type] === 'string' ? a[type].toString().toLowerCase() : a[type]
+          const ar2 = typeof b[type] === 'string' ? b[type].toString().toLowerCase() : b[type]
           
-            const ti1 = a.title.toLowerCase()
-            const ti2 = b.title.toLowerCase()
+          const ti1 = a.title.toLowerCase()
+          const ti2 = b.title.toLowerCase()
           
-            if (ar1 < ar2) return this.orderBy[type] === 'ASC' ? -1 : 1
-            if (ar1 > ar2) return this.orderBy[type] === 'ASC' ? 1 : -1
+          if (ar1 < ar2) return this.orderBy[type] === 'ASC' ? -1 : 1
+          if (ar1 > ar2) return this.orderBy[type] === 'ASC' ? 1 : -1
 
-            // Always reorder by title
-            if (ti1 < ti2) return -1
-            if (ti2 > ti1) return 1
-            return 0
+          // Always reorder by title
+          if (ti1 < ti2) return -1
+          if (ti2 > ti1) return 1
+          return 0
         })
       }
     },
@@ -118,6 +133,18 @@ export const useMPlayerStore = defineStore('MPlayer', {
     },
     clearStatus() {
       for(const i in this.tags) this.tags[i].status = ''
+      this.filterSongs()
+    },
+    updateSong(data: any) {
+      const i = this.songs.findIndex((song: ISong) => data.id === song.id)
+
+      this.songs[i].title = data.title
+      this.songs[i].artist = data.artist
+      this.songs[i].cover = data.cover      
+    },
+    deleteSong(id: string) {
+      this.songs = this.songs.filter((song: ISong) => song.id !== id)
+      this.filterSongs()
     }
   },
 })

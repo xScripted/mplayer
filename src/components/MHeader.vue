@@ -35,6 +35,7 @@ export default defineComponent({
 
     const clearAll = () => {
       clearOrders()
+      mplayer.isRepre = false
       mplayer.filterText = ''
       mplayer.filterSongs()
     }
@@ -89,7 +90,12 @@ export default defineComponent({
     <div class="header">
       <router-link :to="{ name: 'Playlist' }">
         <div class="logo" :class="{ builder: mplayer.modeBuilder }">
-          <h1>MPlayer</h1>
+          <h1>
+            MPlayer {{ mplayer.songsFilter.length }}
+            <span v-if="mplayer.modeBuilder" style="font-style: italic">
+              - Mode editor</span
+            >
+          </h1>
         </div>
       </router-link>
       <div v-if="isPlaylist">
@@ -138,6 +144,20 @@ export default defineComponent({
               :class="{ 'rotate-it': mplayer.orderBy.date === 'DESC' }"
               :icon="caretUp"
             />
+          </ion-button>
+
+          <ion-button
+            class="representation"
+            :color="mplayer.isRepre ? 'success' : 'primary'"
+            @click="
+              () => {
+                mplayer.isRepre = !mplayer.isRepre
+                mplayer.filterRepre()
+                mplayer.filterSongs()
+              }
+            "
+          >
+            Representation
           </ion-button>
         </div>
       </div>
@@ -210,6 +230,10 @@ export default defineComponent({
           transition: 0.3s ease;
           transform: rotate(180deg);
         }
+      }
+
+      .representation {
+        grid-column: 1 / 4;
       }
     }
   }
